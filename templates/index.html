@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OCR Application</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f4f4f9;
+            color: #333;
+        }
+
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        main {
+            max-width: 800px;
+            margin: 30px auto;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        h1 {
+            text-align: center;
+            color: #4CAF50;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+
+        label {
+            font-weight: bold;
+        }
+
+        select, input[type="file"], button {
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #output {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #ccc;
+            padding: 10px;
+            overflow-y: scroll;
+            white-space: pre-wrap;
+            background-color: #f9f9f9;
+            border-radius: 4px;
+        }
+
+        #clearOutput {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            padding: 10px;
+            font-size: 16px;
+            border-radius: 4px;
+        }
+
+        #clearOutput:hover {
+            background-color: #d32f2f;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 20px;
+            color: #777;
+        }
+
+        input:disabled {
+            background-color: #e0e0e0;
+            cursor: not-allowed;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>OCR Application</h1>
+    </header>
+    <main>
+        <form id="ocrForm" action="/upload" method="post" enctype="multipart/form-data">
+            <label for="ocr_type">Select OCR Type:</label>
+            <select name="ocr_type" id="ocr_type" required>
+                <option value="normal">Normal OCR</option>
+                <option value="deep_learning">Deep Learning Models</option>
+            </select>
+
+            <label for="model">Select Model:</label>
+            <select name="model" id="model" required>
+                <!-- Options will be dynamically populated -->
+            </select>
+
+            <label for="image">Upload Image:</label>
+            <input type="file" name="image" id="image" accept="image/*" required disabled>
+
+            <button type="submit">Process Image</button>
+        </form>
+
+        <h2>OCR Output:</h2>
+        <div id="output">The extracted text will appear here...</div>
+        <br>
+        <button id="clearOutput">Clear Output</button>
+    </main>
+    <footer>
+        <p>&copy; 2025 OCR Application. All rights reserved.</p>
+    </footer>
+
+    <script>
+        const ocrTypeDropdown = document.getElementById('ocr_type');
+        const modelDropdown = document.getElementById('model');
+        const fileInput = document.getElementById('image');
+        const outputDiv = document.getElementById('output');
+        const clearButton = document.getElementById('clearOutput');
+
+        // Define models for each OCR type
+        const models = {
+            normal: [
+                { value: 'easyocr', text: 'EasyOCR' },
+                { value: 'tesseract', text: 'Tesseract' }
+            ],
+            deep_learning: [
+                { value: 'crnn', text: 'CRNN' },
+                { value: 'trocr', text: 'TrOCR' },
+                { value: 'yolov3', text: 'YOLOv3 (Future)' },
+                { value: 'yolov4', text: 'YOLOv4 (Future)' },
+                { value: 'yolov5', text: 'YOLOv5 (Future)' },
+                { value: 'bart', text: 'BART (Future)' }
+            ]
+        };
+
+        // Valid models defined in main.py
+        const validModels = ['easyocr', 'tesseract', 'crnn', 'trocr'];
+
+        // Populate the model dropdown based on the selected OCR type
+        function updateModelDropdown() {
+            const selectedType = ocrTypeDropdown.value;
+            modelDropdown.innerHTML = ''; // Clear existing options
+
+            models[selectedType].forEach(model => {
+                const option = document.createElement('option');
+                option.value = model.value;
+                option.textContent = model.text;
+                modelDropdown.appendChild(option);
+            });
+
+            // Update file input state
+            updateFileInputState();
+        }
+
+        // Enable or disable the file input based on the selected model
+        function updateFileInputState() {
+            const selectedModel = modelDropdown.value;
+            if (validModels.includes(selectedModel)) {
+                fileInput.disabled = false;
+            } else {
+                fileInput.disabled = true;
+            }
+        }
+
+        // Clear the output div
+        function clearOutput() {
+            outputDiv.textContent = "The extracted text will appear here...";
+        }
+
+        // Initialize the model dropdown on page load
+        updateModelDropdown();
+
+        // Update the model dropdown and clear output when the OCR type changes
+        ocrTypeDropdown.addEventListener('change', updateModelDropdown);
+
+        // Update file input state and clear output when the model changes
+        modelDropdown.addEventListener('change', () => {
+            updateFileInputState();
+            clearOutput();
+        });
+
+        // Handle form submission
+        document.getElementById('ocrForm').addEventListener('submit', async (event) => {
+            event.preventDefault(); // Prevent the default form submission
+
+            const selectedModel = modelDropdown.value;
+
+            // Show a message for future models
+            if (!validModels.includes(selectedModel)) {
+                outputDiv.textContent = "This model will be added in the future.";
+                return;
+            }
+
+            const formData = new FormData(event.target);
+
+            // Send the form data to the server
+            const response = await fetch('/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            const result = await response.json();
+
+            // Display the result in the output div
+            if (result.text) {
+                outputDiv.textContent = result.text;
+            } else if (result.error) {
+                outputDiv.textContent = `Error: ${result.error}`;
+            }
+        });
+
+        // Handle clear output button click
+        clearButton.addEventListener('click', clearOutput);
+    </script>
+</body>
+</html>
